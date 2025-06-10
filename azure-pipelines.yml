@@ -27,35 +27,42 @@ steps:
     composer install --no-interaction --prefer-dist
   displayName: 'composer install'
 
-# --- DÉBUT DES ÉTAPES D'ANALYSE SAST (AJOUTÉES ICI) ---
+# --- DÉBUT DES ÉTAPES D'ANALYSE SAST ---
 
 - script: |
-    # Installe PHP_CodeSniffer globalement
-    composer global require "squizlabs/php_codesniffer=*"
-    # Ajoute le répertoire des binaires de Composer global à la PATH
+    # S'assure que le répertoire des binaires de Composer global est dans la PATH pour les commandes suivantes
     export PATH="$HOME/.composer/vendor/bin:$PATH"
+    composer global require "squizlabs/php_codesniffer=*"
     phpcs -v
   displayName: 'Install PHP_CodeSniffer'
 
 - script: |
-    # Clone les règles de sécurité de PHPCS-Security-Audit dans le répertoire de travail
+    # S'assure que la PATH est définie pour ce script aussi
+    export PATH="$HOME/.composer/vendor/bin:$PATH"
+    # Clone les règles de sécurité de PHPCS-Security-Audit dans le répertoire de travail du pipeline
     git clone https://github.com/FloeDesignToCode/phpcs-security-audit.git $(System.DefaultWorkingDirectory)/phpcs-security-audit
     # Configure PHPCS pour utiliser ces règles
     phpcs --config-set installed_paths $(System.DefaultWorkingDirectory)/phpcs-security-audit
     # Vérifie que le standard 'Security' est bien listé
     phpcs -i
   displayName: 'Clone PHPCS Security Audit rules'
-  # S'assure que la variable PATH est correctement définie pour ce script
-  env:
-    PATH: $(PATH):$HOME/.composer/vendor/bin
+
+# --- ÉTAPE DE DÉBOGAGE AJOUTÉE ICI ---
+- script: |
+    echo "Listing contents of the working directory ($(System.DefaultWorkingDirectory)) for SAST scan:"
+    ls -lR $(System.DefaultWorkingDirectory)
+    echo "Searching for PHP files in ($(System.DefaultWorkingDirectory)):"
+    find $(System.DefaultWorkingDirectory) -name "*.php"
+  displayName: 'Debug PHP Files Location'
+# --- FIN DE L'ÉTAPE DE DÉBOGAGE ---
 
 - script: |
-    # Exécute le scan SAST en utilisant le standard 'Security' sur tout le code
-    # Le point '.' indique le répertoire courant (votre code source)
-    # Le rapport est généré en XML et est enregistré
+    # S'assure que la PATH est définie pour ce script aussi
+    export PATH="$HOME/.composer/vendor/bin:$PATH"
+    # Exécute le scan SAST. Le '.' fait référence au 'workingDirectory' de cette tâche.
     phpcs --standard=Security --report=full --report-xml=phpcs-security-report.xml .
   displayName: 'Run PHP SAST Scan (PHP_CodeSniffer)'
-  workingDirectory: '$(System.DefaultWorkingDirectory)' # Assurez-vous que c'est le chemin de votre code source
+  workingDirectory: '$(System.DefaultWorkingDirectory)' # C'est la racine de votre dépôt après le checkout
   continueOnError: true # Le pipeline continuera même si des vulnérabilités sont trouvées
 
 - task: PublishBuildArtifacts@1
