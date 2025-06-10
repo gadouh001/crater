@@ -50,7 +50,12 @@ steps:
     phpcs -i # Liste tous les standards de codage reconnus par phpcs
     # --- FIN DES NOUVELLES ÉTAPES DE DÉBOGAGE ---
 
-  displayName: 'Clone PHPCS Security Audit rules & Verify'
+    # Exécute le scan SAST. Le '.' fait référence au 'workingDirectory' de cette tâche.
+    # Assurez-vous que le répertoire actuel est bien le répertoire de travail par défaut pour le scan
+    phpcs --standard=Security --report=full --report-xml=phpcs-security-report.xml .
+  displayName: 'Run PHP SAST Scan (PHP_CodeSniffer)'
+  workingDirectory: '$(System.DefaultWorkingDirectory)' # C'est la racine de votre dépôt après le checkout
+  continueOnError: true # Le pipeline continuera même si des vulnérabilités sont trouvées
 
 # --- ÉTAPE DE DÉBOGAGE CRUCIALE (MAINTENUE) ---
 - script: |
@@ -60,15 +65,6 @@ steps:
     find $(System.DefaultWorkingDirectory) -name "*.php"
   displayName: 'Debug PHP Files Location'
 # --- FIN DE L'ÉTAPE DE DÉBOGAGE ---
-
-- script: |
-    # S'assure que la PATH est définie pour ce script aussi
-    export PATH="$HOME/.composer/vendor/bin:$PATH"
-    # Exécute le scan SAST. Le '.' fait référence au 'workingDirectory' de cette tâche.
-    phpcs --standard=Security --report=full --report-xml=phpcs-security-report.xml .
-  displayName: 'Run PHP SAST Scan (PHP_CodeSniffer)'
-  workingDirectory: '$(System.DefaultWorkingDirectory)' # C'est la racine de votre dépôt après le checkout
-  continueOnError: true # Le pipeline continuera même si des vulnérabilités sont trouvées
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish SAST Report'
