@@ -33,7 +33,7 @@ steps:
     # S'assure que le répertoire des binaires de Composer global est dans la PATH pour les commandes suivantes
     export PATH="$HOME/.composer/vendor/bin:$PATH"
     composer global require "squizlabs/php_codesniffer=*"
-    phpcs -v
+    # J'ai retiré 'phpcs -v' de cette étape pour éviter le déclenchement prématuré de l'erreur
   displayName: 'Install PHP_CodeSniffer'
 
 - script: |
@@ -43,11 +43,10 @@ steps:
     git clone https://github.com/FloeDesignToCode/phpcs-security-audit.git $(System.DefaultWorkingDirectory)/phpcs-security-audit
     # Configure PHPCS pour utiliser ces règles
     phpcs --config-set installed_paths $(System.DefaultWorkingDirectory)/phpcs-security-audit
-    # Vérifie que le standard 'Security' est bien listé
-    phpcs -i
+    phpcs -i # Ceci listera les standards installés, et ne devrait pas déclencher une analyse
   displayName: 'Clone PHPCS Security Audit rules'
 
-# --- ÉTAPE DE DÉBOGAGE AJOUTÉE ICI ---
+# --- ÉTAPE DE DÉBOGAGE CRUCIALE ---
 - script: |
     echo "Listing contents of the working directory ($(System.DefaultWorkingDirectory)) for SAST scan:"
     ls -lR $(System.DefaultWorkingDirectory)
