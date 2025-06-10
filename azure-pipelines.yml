@@ -22,7 +22,47 @@ steps:
     php -version
   displayName: 'Use PHP version $(phpVersion)'
 
-- script: | 
-   composer update --no-interaction --prefer-dist
-   composer install --no-interaction --prefer-dist
+- script: |
+    composer update --no-interaction --prefer-dist
+    composer install --no-interaction --prefer-dist
   displayName: 'composer install'
+
+# --- DÉBUT DES ÉTAPES D'ANALYSE SAST (AJOUTÉES ICI) ---
+
+- script: |
+    # Installe PHP_CodeSniffer globalement
+    composer global require "squizlabs/php_codesniffer=*"
+    # Ajoute le répertoire des binaires de Composer global à la PATH
+    export PATH="$HOME/.composer/vendor/bin:$PATH"
+    phpcs -v
+  displayName: 'Install PHP_CodeSniffer'
+
+- script: |
+    # Clone les règles de sécurité de PHPCS-Security-Audit dans le répertoire de travail
+    git clone https://github.com/FloeDesignToCode/phpcs-security-audit.git $(System.DefaultWorkingDirectory)/phpcs-security-audit
+    # Configure PHPCS pour utiliser ces règles
+    phpcs --config-set installed_paths $(System.DefaultWorkingDirectory)/phpcs-security-audit
+    # Vérifie que le standard 'Security' est bien listé
+    phpcs -i
+  displayName: 'Clone PHPCS Security Audit rules'
+  # S'assure que la variable PATH est correctement définie pour ce script
+  env:
+    PATH: $(PATH):$HOME/.composer/vendor/bin
+
+- script: |
+    # Exécute le scan SAST en utilisant le standard 'Security' sur tout le code
+    # Le point '.' indique le répertoire courant (votre code source)
+    # Le rapport est généré en XML et est enregistré
+    phpcs --standard=Security --report=full --report-xml=phpcs-security-report.xml .
+  displayName: 'Run PHP SAST Scan (PHP_CodeSniffer)'
+  workingDirectory: '$(System.DefaultWorkingDirectory)' # Assurez-vous que c'est le chemin de votre code source
+  continueOnError: true # Le pipeline continuera même si des vulnérabilités sont trouvées
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish SAST Report'
+  inputs:
+    pathToPublish: '$(System.DefaultWorkingDirectory)/phpcs-security-report.xml' # Chemin du rapport généré
+    artifactName: 'SAST Reports'
+    publishLocation: 'Container' # Publie le rapport en tant qu'artefact du build
+
+# --- FIN DES ÉTAPES D'ANALYSE SAST ---
