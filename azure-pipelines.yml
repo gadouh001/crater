@@ -33,7 +33,6 @@ steps:
     # S'assure que le répertoire des binaires de Composer global est dans la PATH pour les commandes suivantes
     export PATH="$HOME/.composer/vendor/bin:$PATH"
     composer global require "squizlabs/php_codesniffer=*"
-    # J'ai retiré 'phpcs -v' de cette étape pour éviter le déclenchement prématuré de l'erreur
   displayName: 'Install PHP_CodeSniffer'
 
 - script: |
@@ -41,12 +40,19 @@ steps:
     export PATH="$HOME/.composer/vendor/bin:$PATH"
     # Clone les règles de sécurité de PHPCS-Security-Audit dans le répertoire de travail du pipeline
     git clone https://github.com/FloeDesignToCode/phpcs-security-audit.git $(System.DefaultWorkingDirectory)/phpcs-security-audit
-    # Configure PHPCS pour utiliser ces règles
+    # Configure PHPCS pour utiliser ces règles en définissant le chemin des standards installés
     phpcs --config-set installed_paths $(System.DefaultWorkingDirectory)/phpcs-security-audit
-    phpcs -i # Ceci listera les standards installés, et ne devrait pas déclencher une analyse
-  displayName: 'Clone PHPCS Security Audit rules'
 
-# --- ÉTAPE DE DÉBOGAGE CRUCIALE ---
+    # --- NOUVELLES ÉTAPES DE DÉBOGAGE POUR PHPCS ---
+    echo "--- PHPCS CONFIG SHOW (Vérifier installed_paths) ---"
+    phpcs --config-show # Affiche la configuration actuelle de phpcs
+    echo "--- PHPCS INSTALLED STANDARDS (Vérifier 'Security' standard) ---"
+    phpcs -i # Liste tous les standards de codage reconnus par phpcs
+    # --- FIN DES NOUVELLES ÉTAPES DE DÉBOGAGE ---
+
+  displayName: 'Clone PHPCS Security Audit rules & Verify'
+
+# --- ÉTAPE DE DÉBOGAGE CRUCIALE (MAINTENUE) ---
 - script: |
     echo "Listing contents of the working directory ($(System.DefaultWorkingDirectory)) for SAST scan:"
     ls -lR $(System.DefaultWorkingDirectory)
